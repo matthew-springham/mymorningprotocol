@@ -28,6 +28,7 @@
   color-scheme:dark;
 }
 *,*::before,*::after{box-sizing:inherit}
+[hidden]{display:none!important}
 html{scroll-padding-top:env(safe-area-inset-top,0px)}
 body{margin:0;background:var(--bg);color:var(--ink);font:400 16px/1.55 Figtree,system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased}
 body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
@@ -145,6 +146,28 @@ tr:last-child td{border-bottom:0}
 .stack{border-top:3px solid var(--sun);padding-top:12px}
 .disclaimer{font-size:13px;color:var(--muted);margin-top:28px;max-width:70ch}
 
+/* Account */
+.acct-btn{margin-left:12px;display:flex;align-items:center;gap:8px;background:transparent;border:1px solid var(--line);border-radius:999px;padding:5px 12px 5px 5px;cursor:pointer;font-weight:600;font-size:14px;white-space:nowrap}
+.acct-btn:hover{border-color:var(--ink)}
+.acct-btn .av{width:26px;height:26px;border-radius:50%;background:var(--sun);color:#13233A;display:grid;place-items:center;font-size:13px;font-weight:700}
+.acct-btn.out{padding:7px 14px;background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.auth-wrap{max-width:440px;margin:0 auto}
+.auth-tabs{display:flex;gap:4px;margin-bottom:18px}
+.auth-tabs button{flex:1;background:none;border:0;border-bottom:2px solid var(--line);padding:10px;cursor:pointer;font-weight:600;color:var(--muted)}
+.auth-tabs button[aria-selected="true"]{color:var(--ink);border-color:var(--sun)}
+.stack-form{display:flex;flex-direction:column;gap:14px}
+.form-err{color:var(--low);font-size:14px;min-height:1em}
+.account-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:20px;align-items:start}
+.account-grid .panel + .panel{margin-top:20px}
+.row-actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.btn.danger{background:var(--low);border-color:var(--low);color:#fff}
+.btn:disabled{opacity:.5;cursor:default}
+.dev-row{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--line)}
+.dev-row:last-child{border-bottom:0}
+.pill{font-size:12px;font-weight:600;padding:2px 8px;border-radius:999px;background:var(--surface-2);color:var(--muted)}
+.pill.live{background:var(--good);color:#fff}
+.device .soon{font-size:13px;font-weight:600;color:var(--muted)}
+
 .toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translate(-50%,20px);background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:999px;opacity:0;pointer-events:none;transition:opacity .25s,transform .25s;z-index:20;font-weight:500}
 .toast.show{opacity:1;transform:translate(-50%,0)}
 
@@ -162,6 +185,9 @@ tr:last-child td{border-bottom:0}
   .pct-row .bar{grid-column:1/-1}
   .add-row{grid-template-columns:1fr}
   .ex-form{grid-template-columns:1fr}
+  .account-grid{grid-template-columns:minmax(0,1fr)}
+  .top-inner{gap:12px}
+  .acct-btn{margin-left:auto}
 }
 </style>
 </head>
@@ -179,6 +205,7 @@ tr:last-child td{border-bottom:0}
       <button role="tab" data-view="devices" aria-selected="false">Devices</button>
       <button role="tab" data-view="plans" aria-selected="false">Plans</button>
     </nav>
+    <button class="acct-btn out" id="acctBtn" type="button">Sign in</button>
   </div>
 </header>
 
@@ -282,7 +309,7 @@ tr:last-child td{border-bottom:0}
         <div class="chart-box"><canvas id="cScatter" aria-label="Adherence versus HRV"></canvas></div>
       </div>
     </div>
-    <div class="panel" style="margin-top:20px">
+    <div class="panel" style="margin-top:20px" id="bodyPanel">
       <div class="panel-head"><h3>Body composition</h3><span class="small muted">From your scale</span></div>
       <div class="chart-box"><canvas id="cBody" aria-label="Weight and body fat"></canvas></div>
     </div>
@@ -313,8 +340,80 @@ tr:last-child td{border-bottom:0}
       <div><h1>Your devices</h1><p class="muted">Readings sync each morning and land on your Today page.</p></div>
       <button class="btn ghost sm" id="resetDemo">Reset sample data</button>
     </div>
+    <div class="banner" id="devBanner" hidden>
+      <p class="small">You’re looking at sample data. Create a free account to connect your own WHOOP and keep your protocol across devices.</p>
+      <button class="btn sm" id="devSignup">Create account</button>
+    </div>
     <div class="device-grid" id="deviceGrid"></div>
-    <p class="disclaimer">In this preview, connecting a device switches sample readings on or off. Live connections are made through each company’s sign-in once the platform’s server is running.</p>
+    <p class="disclaimer" id="devDisclaimer"></p>
+  </section>
+
+  <!-- ACCOUNT -->
+  <section class="view" id="view-account">
+    <div id="authOut">
+      <div class="auth-wrap">
+        <div class="view-head"><div><h1 id="authTitle">Welcome back</h1><p class="muted" id="authSub">Sign in to see your own readings and protocol.</p></div></div>
+        <div class="panel">
+          <div class="auth-tabs" role="tablist">
+            <button role="tab" data-auth="login" aria-selected="true">Sign in</button>
+            <button role="tab" data-auth="signup" aria-selected="false">Create account</button>
+          </div>
+          <form class="stack-form" id="authForm" novalidate>
+            <label class="field" data-only="signup" hidden>Your name<input name="name" autocomplete="name" maxlength="80"></label>
+            <label class="field">Email<input name="email" type="email" autocomplete="email" required></label>
+            <label class="field">Password<input name="password" type="password" autocomplete="current-password" required minlength="8"></label>
+            <label class="field" data-only="signup" hidden>Age group<select name="ageGroup"></select></label>
+            <p class="form-err" id="authErr" role="alert"></p>
+            <button class="btn" type="submit" id="authSubmit">Sign in</button>
+          </form>
+        </div>
+      </div>
+    </div>
+    <div id="authIn" hidden>
+      <div class="view-head"><div><h1 id="acctTitle">Your profile</h1><p class="muted" id="acctEmail"></p></div></div>
+      <div class="account-grid">
+        <div>
+          <div class="panel">
+            <div class="panel-head"><h2>Profile</h2></div>
+            <form class="stack-form" id="profileForm">
+              <label class="field">Name<input name="name" maxlength="80" autocomplete="name"></label>
+              <label class="field">Age group<select name="ageGroup"></select></label>
+              <p class="small muted">Your age group sets who you’re compared with on the Community page.</p>
+              <div><button class="btn" type="submit">Save profile</button></div>
+            </form>
+          </div>
+          <div class="panel">
+            <div class="panel-head"><h2>Connected devices</h2><button class="btn ghost sm" data-goto="devices">Manage</button></div>
+            <div id="acctDevices"></div>
+          </div>
+        </div>
+        <div>
+          <div class="panel">
+            <div class="panel-head"><h2>Change password</h2></div>
+            <form class="stack-form" id="pwForm">
+              <label class="field">Current password<input name="current" type="password" autocomplete="current-password" required></label>
+              <label class="field">New password<input name="next" type="password" autocomplete="new-password" required minlength="8"></label>
+              <p class="form-err" id="pwErr" role="alert"></p>
+              <div><button class="btn ghost" type="submit">Update password</button></div>
+            </form>
+          </div>
+          <div class="panel">
+            <div class="panel-head"><h2>Account</h2></div>
+            <div class="row-actions">
+              <button class="btn ghost" id="logoutBtn">Sign out</button>
+              <button class="btn ghost" id="deleteBtn" style="color:var(--low)">Delete account</button>
+            </div>
+            <div id="deleteConfirm" hidden style="margin-top:14px">
+              <p class="small">This permanently deletes your profile, protocol history and device connections. It can’t be undone.</p>
+              <div class="row-actions" style="margin-top:10px">
+                <button class="btn danger sm" id="deleteYes">Yes, delete my account</button>
+                <button class="btn ghost sm" id="deleteNo">Keep it</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   </section>
 
   <!-- PLANS -->
@@ -423,14 +522,57 @@ function seedDemo(){
 }
 
 let S=null;
+// Signed-out visitors get the sample-data preview (kept in this browser).
+// Signed-in members get their own protocol and logs (saved to their account) plus live device readings.
+let ME=null,LIVE=false,WHOOP_OK=false,LIVE_DEVICES={},SYNC=null;
+const AGE_GROUPS=['25–34','35–44','45–54','55+'];
 function load(){
   try{const raw=localStorage.getItem(KEY);if(raw)S=JSON.parse(raw)}catch(e){S=null}
   if(!S||!S.metrics){S=Object.assign({protocol:DEFAULT_PROTOCOL.slice(),devices:{whoop:true,oura:true,hume:true},cohort:'35–44',welcomed:false},seedDemo())}
   fillGaps();
 }
-function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
+let saveT;
+function save(){
+  if(!LIVE){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}return}
+  clearTimeout(saveT);
+  saveT=setTimeout(()=>{
+    api('PUT','/api/state',{state:{protocol:S.protocol,logs:S.logs,cohort:S.cohort,welcomed:true}}).catch(()=>toast('Couldn’t save. Check your connection.'));
+  },600);
+}
+async function api(method,url,body){
+  const opt={method,headers:{Accept:'application/json'},credentials:'same-origin'};
+  if(body!==undefined){opt.headers['Content-Type']='application/json';opt.body=JSON.stringify(body)}
+  const res=await fetch(url,opt);let data={};
+  try{data=await res.json()}catch(e){}
+  if(!res.ok){const err=new Error(data.error||'Something went wrong.');err.status=res.status;err.data=data;throw err}
+  return data;
+}
+async function loadLive(){
+  let saved=null;
+  try{saved=(await api('GET','/api/state')).state}catch(e){}
+  S=Object.assign({protocol:DEFAULT_PROTOCOL.slice(),logs:{},cohort:ME.ageGroup||'35–44'},saved||{},{metrics:{},welcomed:true});
+  S.devices={whoop:!!LIVE_DEVICES.whoop};
+  if(LIVE_DEVICES.whoop)await syncWhoop(false);
+}
+async function syncWhoop(fresh){
+  try{
+    const d=await api('GET','/api/whoop/summary?days=90'+(fresh?'&fresh=1':''));
+    const sleepById={};d.sleep.forEach(s=>sleepById[s.id]=s);
+    const m={};const day=t=>iso(new Date(t));
+    d.recovery.forEach(r=>{const sl=sleepById[r.sleepId];const k=day(sl?sl.end:r.at);
+      m[k]=Object.assign(m[k]||{},{hrv:Math.round(r.hrv),recovery:Math.round(r.recovery),rhr:Math.round(r.rhr)});
+      if(sl&&sl.performance!=null)m[k].sleep=Math.round(sl.performance)});
+    d.sleep.forEach(s=>{const k=day(s.end);if(s.performance!=null&&(!m[k]||m[k].sleep==null))m[k]=Object.assign(m[k]||{},{sleep:Math.round(s.performance)})});
+    d.cycles.forEach(c=>{const k=day(c.start);m[k]=Object.assign(m[k]||{},{strain:+(+c.strain).toFixed(1)})});
+    S.metrics=m;SYNC=d.syncedAt;
+  }catch(e){
+    S.metrics={};SYNC=null;
+    if(e.data&&e.data.reconnect){LIVE_DEVICES.whoop=null;S.devices.whoop=false;toast('Your WHOOP connection expired. Reconnect it on the Devices page.')}
+    else toast(e.message);
+  }
+}
 function fillGaps(){
-  const dates=Object.keys(S.metrics).sort();let last=dates[dates.length-1];
+  const dates=Object.keys(S.metrics).sort();if(!dates.length)return;let last=dates[dates.length-1];
   let idx=S.metrics[last].idx||dates.length-1;
   while(last<TODAY){
     const next=iso(addDays(parse(last),1));const log=S.logs[last];
@@ -483,7 +625,11 @@ function lastN(key,n,excludeToday){
   return Object.keys(S.metrics).sort().filter(d=>excludeToday?d<TODAY:true).slice(-n).map(d=>S.metrics[d][key]);
 }
 function renderReadings(){
-  const m=S.metrics[TODAY];const dv=S.devices;
+  const dv=S.devices;
+  // Use today's readings, or the most recent day that has any (WHOOP scores recovery once you wake).
+  const dates=Object.keys(S.metrics).sort().filter(d=>d<=TODAY);
+  const mDate=S.metrics[TODAY]&&S.metrics[TODAY].hrv!=null?TODAY:dates.filter(d=>S.metrics[d].hrv!=null).pop()||dates.pop();
+  const m=mDate?S.metrics[mDate]:null;
   const hrvSrc=dv.whoop?'WHOOP':dv.oura?'Oura':dv.garmin?'Garmin':null;
   const bodySrc=dv.hume?'Hume':dv.withings?'Withings':null;
   const sleepSrc=dv.oura?'Oura':dv.whoop?'WHOOP':dv.eight?'Eight Sleep':null;
@@ -492,18 +638,28 @@ function renderReadings(){
     {k:'recovery',l:'Recovery',u:'%',src:hrvSrc,better:1},
     {k:'rhr',l:'Resting HR',u:'bpm',src:hrvSrc,better:-1},
     {k:'sleep',l:'Sleep score',u:'',src:sleepSrc,better:1},
-    {k:'weight',l:'Weight',u:'kg',src:bodySrc,better:-1},
-    {k:'bodyfat',l:'Body fat',u:'%',src:bodySrc,better:-1}
+    LIVE?{k:'strain',l:'Day strain',u:'',src:dv.whoop?'WHOOP':null,better:0,dec:1}:{k:'weight',l:'Weight',u:'kg',src:bodySrc,better:-1,dec:1},
+    LIVE?{k:'weight',l:'Weight',u:'kg',src:bodySrc,better:-1,dec:1}:{k:'bodyfat',l:'Body fat',u:'%',src:bodySrc,better:-1,dec:1}
   ];
   $('#readings').innerHTML=items.map(it=>{
-    if(!it.src||!m)return '<div class="reading"><div class="l">'+it.l+'</div><div class="v">—</div><div class="d">Connect a device</div></div>';
-    const a=avg(lastN(it.k,7,true));const diff=m[it.k]-a;
-    const good=diff*it.better>0;const dec=(it.k==='weight'||it.k==='bodyfat')?1:0;
-    const dtxt=Math.abs(diff)<(dec?0.05:0.5)?'Same as 7-day average':'<span class="'+(good?'up':'down')+'">'+(diff>0?'+':'−')+Math.abs(diff).toFixed(dec)+'</span> vs 7-day average';
-    return '<div class="reading"><div class="l">'+it.l+'</div><div class="v">'+m[it.k]+'<span>'+it.u+'</span></div><div class="d">'+dtxt+'</div></div>';
+    const empty=t=>'<div class="reading"><div class="l">'+it.l+'</div><div class="v">—</div><div class="d">'+t+'</div></div>';
+    if(!it.src)return empty(LIVE&&it.k==='weight'?'Scales coming soon':'Connect a device');
+    const v=m?m[it.k]:null;
+    if(v==null)return empty('No reading yet');
+    const prev=Object.keys(S.metrics).sort().filter(d=>d<mDate).slice(-7).map(d=>S.metrics[d][it.k]).filter(x=>x!=null);
+    const dec=it.dec||0;let dtxt='First reading';
+    if(prev.length){const diff=v-avg(prev);const good=it.better?diff*it.better>0:null;
+      dtxt=Math.abs(diff)<(dec?0.05:0.5)?'Same as 7-day average':'<span class="'+(good===null?'':good?'up':'down')+'">'+(diff>0?'+':'−')+Math.abs(diff).toFixed(dec)+'</span> vs 7-day average'}
+    return '<div class="reading"><div class="l">'+it.l+'</div><div class="v">'+v+'<span>'+it.u+'</span></div><div class="d">'+dtxt+'</div></div>';
   }).join('');
   const srcs=[...new Set([hrvSrc,sleepSrc,bodySrc].filter(Boolean))];
-  $('#syncNote').textContent=srcs.length?'Synced this morning from '+srcs.join(', ')+'.':'No devices connected yet.';
+  let note=srcs.length?'Synced this morning from '+srcs.join(', ')+'.':'No devices connected yet.';
+  if(LIVE){
+    if(!srcs.length)note='No devices connected yet. Connect your WHOOP on the Devices page.';
+    else if(!m)note='Connected to WHOOP. Readings appear here once WHOOP has scored your sleep and recovery.';
+    else note=(mDate===TODAY?'Today’s readings':'Latest readings, from '+parse(mDate).toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'short'}))+' · synced from WHOOP'+(SYNC?' at '+new Date(SYNC).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}):'')+'.';
+  }
+  $('#syncNote').textContent=note;
 }
 function renderSavedEx(){
   const ex=dayLog(TODAY).exercise;
@@ -551,12 +707,17 @@ function renderInsights(){
   // insight sentences
   const sorted=byType.slice().sort((a,b)=>b.v-a.v);const best=sorted[0],worst=sorted[sorted.length-1];
   const hi=P.filter(p=>p.adh>=0.8).map(p=>p.next.hrv),lo=P.filter(p=>p.adh<0.8).map(p=>p.next.hrv);
-  const w0=S.metrics[days[0]].weight,w1=S.metrics[days[days.length-1]].weight;
+  const wDays=days.filter(d=>S.metrics[d].weight!=null);
   const ins=[];
   if(best&&worst&&best!==worst)ins.push(['After '+best.t.toLowerCase()+', recovery averages '+best.v+'%','That’s '+(best.v-worst.v)+' points higher than mornings after '+worst.t.toLowerCase()+'.']);
   if(hi.length&&lo.length)ins.push(['Hitting 80% of your protocol is worth '+(avg(hi)-avg(lo)).toFixed(1)+' ms of HRV','Next-morning HRV averages '+avg(hi).toFixed(0)+' ms on those days, against '+avg(lo).toFixed(0)+' ms on the rest.']);
-  ins.push([(w1<=w0?'Down ':'Up ')+Math.abs(w1-w0).toFixed(1)+' kg in '+range+' days','Body fat has moved from '+S.metrics[days[0]].bodyfat+'% to '+S.metrics[days[days.length-1]].bodyfat+'%.']);
-  $('#insightList').innerHTML=ins.map(i=>'<div class="insight"><strong>'+i[0]+'</strong><p class="small muted">'+i[1]+'</p></div>').join('');
+  if(wDays.length>1){const a=S.metrics[wDays[0]],b=S.metrics[wDays[wDays.length-1]];
+    ins.push([(b.weight<=a.weight?'Down ':'Up ')+Math.abs(b.weight-a.weight).toFixed(1)+' kg in '+range+' days','Body fat has moved from '+a.bodyfat+'% to '+b.bodyfat+'%.'])}
+  const hrvDays=days.filter(d=>S.metrics[d].hrv!=null);
+  if(LIVE&&hrvDays.length>1){const h=hrvDays.map(d=>S.metrics[d].hrv);ins.push(['Your HRV averaged '+avg(h).toFixed(0)+' ms over '+hrvDays.length+' mornings','Range '+Math.min(...h)+'–'+Math.max(...h)+' ms, from your WHOOP.'])}
+  $('#bodyPanel').hidden=LIVE;
+  $('#insightList').innerHTML=ins.length?ins.map(i=>'<div class="insight"><strong>'+i[0]+'</strong><p class="small muted">'+i[1]+'</p></div>').join('')
+    :'<p class="muted" style="grid-column:1/-1">'+(LIVE&&!S.devices.whoop?'Connect your WHOOP on the Devices page, then tick off your protocol each morning. Insights build up after a week or so.':'Insights build up as you tick off your protocol and log sessions each morning. Check back in a week or so.')+'</p>';
 }
 
 /* ---------- Community ---------- */
@@ -566,25 +727,89 @@ function ncdf(z){const t=1/(1+0.2316419*Math.abs(z));const d=0.3989423*Math.exp(
 function renderCommunity(){
   const sel=$('#cohort');if(!sel.options.length){sel.innerHTML=Object.keys(COHORTS).map(c=>'<option>'+c+'</option>').join('');sel.addEventListener('change',()=>{S.cohort=sel.value;save();renderCommunity()})}
   sel.value=S.cohort;const C=COHORTS[S.cohort];
-  const days=Object.keys(S.metrics).sort().filter(d=>d<TODAY).slice(-30);
+  const days=Object.keys(S.metrics).sort().filter(d=>d<TODAY&&S.metrics[d].hrv!=null).slice(-30);
+  if(!days.length){
+    $('#pctPanel').innerHTML='<div class="panel-head"><h2>Compared with members aged '+S.cohort+'</h2></div><p class="muted">Your comparison appears here once you have a few mornings of readings'+(LIVE&&!S.devices.whoop?'. Connect your WHOOP on the Devices page to get started.':'.')+'</p>';
+  }else{
   const you={hrv:avg(days.map(d=>S.metrics[d].hrv)),recovery:avg(days.map(d=>S.metrics[d].recovery)),rhr:avg(days.map(d=>S.metrics[d].rhr)),adh:avg(days.map(d=>adherence(d)*100))};
   const rows=[['hrv','HRV','ms',1],['recovery','Recovery','%',1],['rhr','Resting heart rate','bpm',-1],['adh','Protocol adherence','%',1]];
   $('#pctPanel').innerHTML='<div class="panel-head"><h2>Compared with '+COHORT_SIZE[S.cohort].toLocaleString('en-GB')+' members aged '+S.cohort+'</h2></div>'+rows.map(([k,l,u,b])=>{
     const [m,sd]=C[k];let pct=ncdf((you[k]-m)/sd);if(b<0)pct=1-pct;pct=clamp(Math.round(pct*100),1,99);
     return '<div class="pct-row"><div>'+l+'</div><div class="you">'+you[k].toFixed(0)+'<span class="small muted"> '+u+'</span></div><div class="bar"><div class="track"><div class="marker" style="left:'+pct+'%"></div></div><div class="pct-label">Better than '+pct+'% of members your age</div></div></div>';
   }).join('');
+  }
   const habits=[['Zone 2 cardio three or more mornings a week',1840,71,'+6.8'],['10 minutes of morning light',3210,78,'+4.1'],['Protein-first breakfast',2660,74,'+2.9'],['Coffee after 90 minutes',1975,63,'+2.2'],['Cold exposure',1120,58,'+1.6'],['Creatine daily',2430,82,'+0.9']];
   $('#habitTable').innerHTML=habits.map(h=>'<tr><td>'+h[0]+'</td><td class="num">'+h[1].toLocaleString('en-GB')+'</td><td class="num">'+h[2]+'%</td><td class="num up">'+h[3]+' ms</td></tr>').join('');
 }
 
 /* ---------- Devices ---------- */
+const LIVE_PROVIDERS=['whoop'];
+function fmtWhen(t){return t?new Date(t).toLocaleString('en-GB',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):''}
 function renderDevices(){
-  $('#deviceGrid').innerHTML=DEVICES.map(d=>{const on=!!S.devices[d.id];
-    return '<div class="device'+(on?' on':'')+'"><h3>'+d.name+'</h3>'+(on?'<div class="status">Connected</div>':'')+'<p class="small">'+d.data+'</p><p class="via">'+d.via+'</p><button class="btn sm'+(on?' ghost':'')+'" data-dev="'+d.id+'">'+(on?'Disconnect':'Connect')+'</button></div>'}).join('');
-  $('#deviceGrid').querySelectorAll('[data-dev]').forEach(b=>b.addEventListener('click',()=>{
-    const id=b.dataset.dev;S.devices[id]=!S.devices[id];save();renderDevices();renderReadings();
-    toast((DEVICES.find(d=>d.id===id).name)+(S.devices[id]?' connected':' disconnected'));
+  $('#resetDemo').hidden=LIVE;
+  $('#devBanner').hidden=LIVE;
+  $('#devDisclaimer').textContent=LIVE
+    ?'WHOOP connects through your WHOOP account. You can disconnect at any time, which also revokes our access on WHOOP’s side. More devices are on the way.'
+    :'In this preview, connecting a device switches sample readings on or off. Create an account to connect your real WHOOP.';
+  if(!LIVE){
+    $('#deviceGrid').innerHTML=DEVICES.map(d=>{const on=!!S.devices[d.id];
+      return '<div class="device'+(on?' on':'')+'"><h3>'+d.name+'</h3>'+(on?'<div class="status">Connected (sample)</div>':'')+'<p class="small">'+d.data+'</p><p class="via">'+d.via+'</p><button class="btn sm'+(on?' ghost':'')+'" data-dev="'+d.id+'">'+(on?'Disconnect':'Connect')+'</button></div>'}).join('');
+    $('#deviceGrid').querySelectorAll('[data-dev]').forEach(b=>b.addEventListener('click',()=>{
+      const id=b.dataset.dev;S.devices[id]=!S.devices[id];save();renderDevices();renderReadings();
+      toast((DEVICES.find(d=>d.id===id).name)+(S.devices[id]?' connected':' disconnected'));
+    }));
+    return;
+  }
+  const order=DEVICES.slice().sort((a,b)=>(LIVE_PROVIDERS.includes(b.id)?1:0)-(LIVE_PROVIDERS.includes(a.id)?1:0));
+  $('#deviceGrid').innerHTML=order.map(d=>{
+    if(!LIVE_PROVIDERS.includes(d.id))return '<div class="device"><h3>'+d.name+'</h3><div class="soon">Coming soon</div><p class="small">'+d.data+'</p><p class="via">'+d.via+'</p><button class="btn sm ghost" disabled>Connect</button></div>';
+    const c=LIVE_DEVICES[d.id];
+    if(c)return '<div class="device on"><h3>'+d.name+'</h3><div class="status">Connected</div><p class="small">'+d.data+'</p><p class="via">'+(c.lastSyncAt?'Last synced '+fmtWhen(c.lastSyncAt):'Connected '+fmtWhen(c.connectedAt))+'</p><div class="row-actions" style="margin-top:auto"><button class="btn sm" data-sync="'+d.id+'">Sync now</button><button class="btn sm ghost" data-disc="'+d.id+'">Disconnect</button></div></div>';
+    return '<div class="device"><h3>'+d.name+'</h3><p class="small">'+d.data+'</p><p class="via">'+(WHOOP_OK?d.via:'Being set up. Check back shortly.')+'</p><a class="btn sm" style="text-decoration:none;text-align:center'+(WHOOP_OK?'':';pointer-events:none;opacity:.5')+'" href="/auth/whoop/start">Connect WHOOP</a></div>';
+  }).join('');
+  $('#deviceGrid').querySelectorAll('[data-sync]').forEach(b=>b.addEventListener('click',async()=>{
+    b.disabled=true;b.textContent='Syncing…';await syncWhoop(true);await refreshMe();renderDevices();renderToday();toast('WHOOP synced');
   }));
+  $('#deviceGrid').querySelectorAll('[data-disc]').forEach(b=>b.addEventListener('click',async()=>{
+    b.disabled=true;
+    try{await api('DELETE','/api/devices/whoop');delete LIVE_DEVICES.whoop;S.devices.whoop=false;S.metrics={};SYNC=null;renderDevices();renderToday();toast('WHOOP disconnected')}
+    catch(e){b.disabled=false;toast(e.message)}
+  }));
+}
+
+/* ---------- Account ---------- */
+let authMode='login';
+function setAuthMode(m){
+  authMode=m;
+  document.querySelectorAll('[data-auth]').forEach(b=>b.setAttribute('aria-selected',b.dataset.auth===m?'true':'false'));
+  document.querySelectorAll('#authForm [data-only]').forEach(el=>el.hidden=el.dataset.only!==m);
+  $('#authForm [name=password]').setAttribute('autocomplete',m==='signup'?'new-password':'current-password');
+  $('#authSubmit').textContent=m==='signup'?'Create account':'Sign in';
+  $('#authTitle').textContent=m==='signup'?'Create your account':'Welcome back';
+  $('#authSub').textContent=m==='signup'?'Free to start. Connect your WHOOP and keep your protocol on every device.':'Sign in to see your own readings and protocol.';
+  $('#authErr').textContent='';
+}
+function renderAccount(){
+  $('#authOut').hidden=!!ME;$('#authIn').hidden=!ME;
+  if(!ME)return;
+  $('#acctTitle').textContent=ME.name?ME.name:'Your profile';
+  $('#acctEmail').textContent=ME.email+' · member since '+new Date(ME.createdAt).toLocaleDateString('en-GB',{month:'long',year:'numeric'});
+  const f=$('#profileForm');f.name.value=ME.name||'';f.ageGroup.value=ME.ageGroup;
+  $('#acctDevices').innerHTML=LIVE_PROVIDERS.map(id=>{const d=DEVICES.find(x=>x.id===id);const c=LIVE_DEVICES[id];
+    return '<div class="dev-row"><span>'+d.name+'</span>'+(c?'<span class="pill live">Connected</span>':'<a class="btn sm" style="text-decoration:none" href="/auth/whoop/start">Connect</a>')+'</div>'}).join('')
+    +'<p class="small muted" style="margin-top:8px">Oura, Withings, Garmin and more are coming soon.</p>';
+  $('#deleteConfirm').hidden=true;
+}
+function renderAcctBtn(){
+  const b=$('#acctBtn');
+  if(ME){const label=ME.name?ME.name.split(' ')[0]:'Profile';b.className='acct-btn';b.innerHTML='<span class="av">'+esc((ME.name||ME.email).charAt(0).toUpperCase())+'</span><span>'+esc(label)+'</span>';b.setAttribute('aria-label','Your profile')}
+  else{b.className='acct-btn out';b.textContent='Sign in';b.removeAttribute('aria-label')}
+}
+async function refreshMe(){
+  const r=await api('GET','/api/me');
+  ME=r.user;WHOOP_OK=!!r.whoopAvailable;LIVE_DEVICES=r.devices||{};LIVE=!!ME;
+  if(LIVE&&S)S.devices={whoop:!!LIVE_DEVICES.whoop};
+  return r;
 }
 
 /* ---------- Shell ---------- */
@@ -596,6 +821,7 @@ function show(view){
   if(view==='insights')renderInsights();
   if(view==='community')renderCommunity();
   if(view==='devices')renderDevices();
+  if(view==='account')renderAccount();
   window.scrollTo(0,0);
 }
 document.querySelectorAll('nav.tabs button').forEach(b=>b.addEventListener('click',()=>show(b.dataset.view)));
@@ -620,7 +846,66 @@ $('#resetDemo').addEventListener('click',()=>{try{localStorage.removeItem(KEY)}c
 document.querySelectorAll('[data-plan]').forEach(b=>b.addEventListener('click',()=>toast(b.dataset.plan==='Free'?'You’re on the free plan':'Added to the '+b.dataset.plan+' waitlist')));
 window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{if($('#view-insights').classList.contains('active'))renderInsights()});
 
-load();save();renderToday();
+/* Account wiring */
+document.querySelectorAll('select[name=ageGroup]').forEach(s=>s.innerHTML=AGE_GROUPS.map(g=>'<option>'+g+'</option>').join(''));
+$('#authForm [name=ageGroup]').value='35–44';
+document.querySelectorAll('[data-auth]').forEach(b=>b.addEventListener('click',()=>setAuthMode(b.dataset.auth)));
+$('#acctBtn').addEventListener('click',()=>show('account'));
+$('#devSignup').addEventListener('click',()=>{setAuthMode('signup');show('account')});
+document.querySelectorAll('[data-goto]').forEach(b=>b.addEventListener('click',()=>show(b.dataset.goto)));
+let afterAuth=null;
+async function enterLive(){
+  await refreshMe();await loadLive();renderAcctBtn();renderToday();
+}
+$('#authForm').addEventListener('submit',async e=>{
+  e.preventDefault();const f=e.target;const btn=$('#authSubmit');$('#authErr').textContent='';
+  const body={email:f.email.value.trim(),password:f.password.value};
+  if(authMode==='signup'){body.name=f.name.value.trim();body.ageGroup=f.ageGroup.value}
+  if(!body.email||!body.password){$('#authErr').textContent='Enter your email and password.';return}
+  btn.disabled=true;
+  try{
+    await api('POST',authMode==='signup'?'/api/signup':'/api/login',body);
+    f.reset();$('#authForm [name=ageGroup]').value='35–44';
+    if(afterAuth==='whoop'&&WHOOP_OK){location.href='/auth/whoop/start';return}
+    await enterLive();
+    toast(authMode==='signup'?'Welcome! Your account is ready':'Signed in');
+    show(authMode==='signup'?'devices':'today');
+  }catch(err){$('#authErr').textContent=err.message}
+  finally{btn.disabled=false}
+});
+$('#profileForm').addEventListener('submit',async e=>{
+  e.preventDefault();const f=e.target;
+  try{const r=await api('PATCH','/api/me',{name:f.name.value,ageGroup:f.ageGroup.value});ME=r.user;S.cohort=ME.ageGroup;save();renderAcctBtn();renderAccount();toast('Profile saved')}
+  catch(err){toast(err.message)}
+});
+$('#pwForm').addEventListener('submit',async e=>{
+  e.preventDefault();const f=e.target;$('#pwErr').textContent='';
+  try{await api('POST','/api/me/password',{current:f.current.value,next:f.next.value});f.reset();toast('Password updated')}
+  catch(err){$('#pwErr').textContent=err.message}
+});
+$('#logoutBtn').addEventListener('click',async()=>{
+  try{await api('POST','/api/logout',{})}catch(e){}
+  location.href='/';
+});
+$('#deleteBtn').addEventListener('click',()=>{$('#deleteConfirm').hidden=false});
+$('#deleteNo').addEventListener('click',()=>{$('#deleteConfirm').hidden=true});
+$('#deleteYes').addEventListener('click',async()=>{
+  try{await api('DELETE','/api/me');location.href='/'}catch(e){toast(e.message)}
+});
+
+/* Boot */
+(async function boot(){
+  const params=new URLSearchParams(location.search);
+  let view=params.get('view');const w=params.get('whoop');afterAuth=params.get('next');
+  if(params.toString())history.replaceState(null,'',location.pathname);
+  try{await refreshMe()}catch(e){ME=null;LIVE=false}
+  if(LIVE){await loadLive()}else{load();save()}
+  renderAcctBtn();renderToday();
+  if(afterAuth==='whoop'&&!ME)setAuthMode('login');
+  const msgs={connected:'WHOOP connected. Your readings are syncing.',denied:'WHOOP connection cancelled.',expired:'That WHOOP sign-in timed out. Please try again.',failed:'Couldn’t connect to WHOOP. Please try again.',unavailable:'WHOOP connections are still being set up.'};
+  if(w&&msgs[w])toast(msgs[w]);
+  if(view&&document.getElementById('view-'+view))show(view);
+})();
 })();
 </script>
 </body>

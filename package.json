@@ -1,0 +1,19 @@
+{
+  "name": "mymorningprotocol",
+  "version": "1.0.0",
+  "private": true,
+  "description": "My Morning Protocol: accounts, WHOOP connection and the morning dashboard.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cookie-parser": "^1.4.7",
+    "express": "^4.21.2",
+    "mysql2": "^3.24.6"
+  }
+}
