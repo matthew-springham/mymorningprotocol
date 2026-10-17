@@ -19,7 +19,7 @@ www.mymorningprotocol.com, hosted on Hostinger (Node.js Web App + MySQL).
 | `DB_USER` | MySQL username |
 | `DB_PASSWORD` | MySQL password |
 | `DB_NAME` | MySQL database name |
-| `APP_URL` | `https://www.mymorningprotocol.com` |
+| `APP_URL` | `https://mymorningprotocol.com` |
 | `TOKEN_ENCRYPTION_KEY` | Optional. Encrypts stored WHOOP tokens; if unset, a random key is generated once and kept in the database |
 | `WHOOP_CLIENT_ID` | From the WHOOP Developer Dashboard |
 | `WHOOP_CLIENT_SECRET` | From the WHOOP Developer Dashboard |
@@ -30,5 +30,5 @@ The database tables are created automatically when the server starts. A health c
 
 Create an app at https://developer-dashboard.whoop.com with:
 
-- Redirect URL: `https://www.mymorningprotocol.com/auth/whoop/callback`
+- Redirect URL: `https://mymorningprotocol.com/auth/whoop/callback`
 - Scopes: `offline`, `read:profile`, `read:recovery`, `read:cycles`, `read:sleep`, `read:workout`, `read:body_measurement`
