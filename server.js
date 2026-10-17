@@ -35,10 +35,16 @@ async function q(sql, params = []) {
 }
 
 /* ---------- Token encryption (device tokens are stored encrypted) ---------- */
-const ENC_KEY = process.env.TOKEN_ENCRYPTION_KEY
+// Uses TOKEN_ENCRYPTION_KEY if set; otherwise a random key is generated once and kept in the database.
+let ENC_KEY = process.env.TOKEN_ENCRYPTION_KEY
   ? crypto.createHash('sha256').update(process.env.TOKEN_ENCRYPTION_KEY).digest()
   : null;
-if (!ENC_KEY) console.warn('TOKEN_ENCRYPTION_KEY is not set: device tokens will be stored unencrypted.');
+async function loadEncryptionKey() {
+  if (ENC_KEY) return;
+  await q("INSERT IGNORE INTO app_secrets (name, value) VALUES ('token_key', ?)", [crypto.randomBytes(32).toString('hex')]);
+  const r = await q("SELECT value FROM app_secrets WHERE name = 'token_key'");
+  ENC_KEY = crypto.createHash('sha256').update(r.rows[0].value).digest();
+}
 function encrypt(text) {
   if (!ENC_KEY || text == null) return text;
   const iv = crypto.randomBytes(12);
@@ -102,8 +108,14 @@ async function migrate() {
       created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
       CONSTRAINT oauth_user_fk FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     ) ${TABLE_OPTS}`
+    ,
+    `CREATE TABLE IF NOT EXISTS app_secrets (
+      name VARCHAR(64) NOT NULL PRIMARY KEY,
+      value TEXT NOT NULL
+    ) ${TABLE_OPTS}`
   ];
   for (const s of statements) await q(s);
+  await loadEncryptionKey();
 }
 
 /* ---------- App ---------- */

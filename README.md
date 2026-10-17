@@ -20,7 +20,7 @@ www.mymorningprotocol.com, hosted on Hostinger (Node.js Web App + MySQL).
 | `DB_PASSWORD` | MySQL password |
 | `DB_NAME` | MySQL database name |
 | `APP_URL` | `https://www.mymorningprotocol.com` |
-| `TOKEN_ENCRYPTION_KEY` | Long random string (encrypts stored WHOOP tokens). Don't change it once set |
+| `TOKEN_ENCRYPTION_KEY` | Optional. Encrypts stored WHOOP tokens; if unset, a random key is generated once and kept in the database |
 | `WHOOP_CLIENT_ID` | From the WHOOP Developer Dashboard |
 | `WHOOP_CLIENT_SECRET` | From the WHOOP Developer Dashboard |
 
