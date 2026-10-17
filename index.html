@@ -542,8 +542,17 @@ function save(){
 async function api(method,url,body){
   const opt={method,headers:{Accept:'application/json'},credentials:'same-origin'};
   if(body!==undefined){opt.headers['Content-Type']='application/json';opt.body=JSON.stringify(body)}
-  const res=await fetch(url,opt);let data={};
-  try{data=await res.json()}catch(e){}
+  // Our server always answers in JSON. Anything else (or no answer) means the host was restarting
+  // the app and never processed the request, so it's safe to wait and try again.
+  let res=null,data=null;
+  for(let i=0;i<4;i++){
+    try{res=await fetch(url,opt)}catch(e){res=null}
+    data=null;
+    if(res){try{data=await res.clone().json()}catch(e){data=null}}
+    if(res&&data&&typeof data==='object')break;
+    if(i<3)await new Promise(r=>setTimeout(r,1500*(i+1)));
+  }
+  if(!res||!data||typeof data!=='object'){const err=new Error('We couldn’t reach the server just now. Please try again in a moment.');err.status=res?res.status:0;err.data={};throw err}
   if(!res.ok){const err=new Error(data.error||'Something went wrong.');err.status=res.status;err.data=data;throw err}
   return data;
 }
