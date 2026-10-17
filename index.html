@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>My Morning Protocol</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Figtree:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{
+  --bg:#EDF1F3;--surface:#FFFFFF;--surface-2:#E2E9EE;--ink:#13233A;--muted:#566476;--line:#CCD6DE;
+  --sun:#E0892A;--sun-soft:#F8DDB2;--good:#2F7552;--low:#B23F58;--sky-top:#C9DCEB;--sky-low:#F9D9AE;--ground:#13233A;
+  color-scheme:light;box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0C1625;--surface:#14223A;--surface-2:#1B2C47;--ink:#E7EDF3;--muted:#9AA9BB;--line:#283B58;
+    --sun:#F2A94A;--sun-soft:#4E3A1E;--good:#6CBB8C;--low:#E27D93;--sky-top:#0F1D33;--sky-low:#4A3324;--ground:#08111E;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0C1625;--surface:#14223A;--surface-2:#1B2C47;--ink:#E7EDF3;--muted:#9AA9BB;--line:#283B58;
+  --sun:#F2A94A;--sun-soft:#4E3A1E;--good:#6CBB8C;--low:#E27D93;--sky-top:#0F1D33;--sky-low:#4A3324;--ground:#08111E;
+  color-scheme:dark;
+}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 16px/1.55 Figtree,system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
+h1,h2,h3{font-family:"Bricolage Grotesque",Figtree,system-ui,sans-serif;line-height:1.15;margin:0;font-weight:700}
+h2{font-size:22px}h3{font-size:17px}
+p{margin:0}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--sun);outline-offset:2px}
+.muted{color:var(--muted)}
+.small{font-size:14px}
+
+header.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);border-bottom:1px solid var(--line)}
+.top-inner{max-width:1120px;margin:0 auto;display:flex;align-items:center;gap:24px;padding:12px 20px}
+.brand{display:flex;align-items:center;gap:10px;font-family:"Bricolage Grotesque",Figtree,sans-serif;font-weight:700;font-size:19px;letter-spacing:-.01em}
+.brand svg{width:30px;height:30px;flex:none}
+nav.tabs{display:flex;gap:2px;margin-left:auto}
+nav.tabs button{background:none;border:0;padding:8px 14px;border-radius:999px;cursor:pointer;color:var(--muted);font-weight:500}
+nav.tabs button[aria-selected="true"]{background:var(--ink);color:var(--bg)}
+nav.tabs button:hover:not([aria-selected="true"]){color:var(--ink)}
+
+main{max-width:1120px;margin:0 auto;padding:28px 20px 60px}
+.view{display:none}.view.active{display:block}
+.view-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:22px}
+.view-head h1{font-size:clamp(28px,4vw,40px);letter-spacing:-.02em}
+
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:20px}
+.panel + .panel{margin-top:20px}
+.panel-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-bottom:14px}
+
+.btn{border:1px solid var(--ink);background:var(--ink);color:var(--bg);border-radius:999px;padding:9px 18px;cursor:pointer;font-weight:600}
+.btn.ghost{background:transparent;color:var(--ink);border-color:var(--line)}
+.btn.ghost:hover{border-color:var(--ink)}
+.btn.sm{padding:6px 12px;font-size:14px}
+.field{display:flex;flex-direction:column;gap:6px;font-size:14px;color:var(--muted)}
+.field input,.field select,.field textarea{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:9px 11px;color:var(--ink);width:100%}
+
+.banner{display:flex;gap:16px;align-items:center;justify-content:space-between;background:var(--sun-soft);border-radius:14px;padding:14px 18px;margin-bottom:22px}
+
+/* Today */
+.today-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:20px;align-items:start}
+.dawn{position:relative;border-radius:14px;overflow:hidden;border:1px solid var(--line);background:var(--surface)}
+.dawn svg{display:block;width:100%;height:auto}
+.dawn-text{position:absolute;left:22px;bottom:18px;color:#F4F1EC}
+.dawn-text .score{font-family:"Bricolage Grotesque",sans-serif;font-weight:700;font-size:56px;line-height:1;letter-spacing:-.03em}
+.dawn-text p{font-size:15px;opacity:.85}
+#sun{transition:transform .9s cubic-bezier(.2,.8,.2,1)}
+#rays{transition:opacity .6s ease}
+@media (prefers-reduced-motion: reduce){#sun,#rays{transition:none}}
+
+.readings{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:14px;overflow:hidden;margin-top:20px}
+.reading{background:var(--surface);padding:14px 16px}
+.reading .v{font-family:"Bricolage Grotesque",sans-serif;font-weight:700;font-size:26px;letter-spacing:-.02em}
+.reading .v span{font-size:14px;font-weight:500;color:var(--muted);margin-left:2px}
+.reading .l{font-size:14px;font-weight:500}
+.reading .d{font-size:13px;color:var(--muted)}
+.up{color:var(--good)}.down{color:var(--low)}
+
+.group-name{font-weight:600;font-size:14px;color:var(--muted);margin:16px 0 4px}
+.group-name:first-child{margin-top:0}
+.check{display:flex;align-items:center;gap:12px;padding:9px 2px;border-bottom:1px solid var(--line);cursor:pointer}
+.check:last-child{border-bottom:0}
+.check input{width:20px;height:20px;accent-color:var(--sun);flex:none;margin:0}
+.check.done span{color:var(--muted);text-decoration:line-through;text-decoration-color:var(--line)}
+details.edit{margin-top:14px;border-top:1px solid var(--line);padding-top:12px}
+details.edit summary{cursor:pointer;font-weight:600;font-size:15px}
+.edit-row{display:flex;justify-content:space-between;align-items:center;padding:6px 0;font-size:15px}
+.edit-row button{background:none;border:0;color:var(--low);cursor:pointer;font-size:14px}
+.add-row{display:grid;grid-template-columns:1fr 150px auto;gap:8px;margin-top:10px}
+.ex-form{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.ex-form .wide{grid-column:1/-1}
+.rpe-out{font-weight:600;color:var(--ink)}
+.saved-ex{margin-top:12px;padding:10px 12px;border-radius:8px;background:var(--surface-2);font-size:15px}
+
+/* Insights */
+.insight-list{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px;margin-bottom:20px}
+.insight{border-left:3px solid var(--sun);padding:4px 0 4px 14px}
+.insight strong{display:block;font-family:"Bricolage Grotesque",sans-serif;font-size:19px;margin-bottom:4px;line-height:1.25}
+.chart-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:20px;margin-top:20px}
+.chart-box{position:relative;height:280px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:999px;padding:3px}
+.seg button{background:none;border:0;padding:5px 12px;border-radius:999px;cursor:pointer;color:var(--muted);font-size:14px}
+.seg button[aria-pressed="true"]{background:var(--surface-2);color:var(--ink);font-weight:600}
+
+/* Community */
+.pct-row{display:grid;grid-template-columns:150px 90px minmax(0,1fr);gap:16px;align-items:center;padding:14px 0;border-bottom:1px solid var(--line)}
+.pct-row:last-child{border-bottom:0}
+.pct-row .you{font-family:"Bricolage Grotesque",sans-serif;font-weight:700;font-size:20px}
+.track{position:relative;height:8px;border-radius:999px;background:linear-gradient(90deg,var(--surface-2),var(--sun-soft))}
+.marker{position:absolute;top:50%;width:18px;height:18px;border-radius:50%;background:var(--sun);border:3px solid var(--surface);transform:translate(-50%,-50%);box-shadow:0 0 0 1px var(--sun)}
+.pct-label{font-size:13px;color:var(--muted);margin-top:8px}
+.table-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:15px;min-width:520px}
+th{text-align:left;font-weight:600;color:var(--muted);font-size:14px;padding:8px 10px;border-bottom:1px solid var(--line)}
+td{padding:12px 10px;border-bottom:1px solid var(--line)}
+tr:last-child td{border-bottom:0}
+.num{text-align:right;font-variant-numeric:tabular-nums}
+
+/* Devices */
+.device-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:16px}
+.device{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px;display:flex;flex-direction:column;gap:8px}
+.device.on{border-color:var(--good)}
+.device .status{font-size:13px;font-weight:600;color:var(--good)}
+.device .via{font-size:13px;color:var(--muted)}
+.device .btn{align-self:flex-start;margin-top:auto}
+
+/* Plans */
+.plans{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+.plan{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:22px;display:flex;flex-direction:column;gap:12px}
+.plan.featured{border:2px solid var(--sun)}
+.plan .price{font-family:"Bricolage Grotesque",sans-serif;font-size:34px;font-weight:700;letter-spacing:-.02em}
+.plan .price span{font-size:15px;font-weight:500;color:var(--muted)}
+.plan ul{margin:0;padding-left:18px;font-size:15px;display:flex;flex-direction:column;gap:6px}
+.plan .btn{margin-top:auto;align-self:flex-start}
+.stacks{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+.stack{border-top:3px solid var(--sun);padding-top:12px}
+.disclaimer{font-size:13px;color:var(--muted);margin-top:28px;max-width:70ch}
+
+.toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translate(-50%,20px);background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:999px;opacity:0;pointer-events:none;transition:opacity .25s,transform .25s;z-index:20;font-weight:500}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+
+@media (max-width:900px){
+  .today-grid,.chart-grid{grid-template-columns:minmax(0,1fr)}
+  .insight-list,.plans,.stacks{grid-template-columns:minmax(0,1fr)}
+}
+@media (max-width:720px){
+  nav.tabs{position:fixed;left:0;right:0;bottom:0;margin:0;justify-content:space-around;background:var(--surface);border-top:1px solid var(--line);padding:6px 6px calc(6px + env(safe-area-inset-bottom,0px));z-index:6}
+  nav.tabs button{font-size:13px;padding:8px 10px}
+  main{padding-bottom:110px}
+  .toast{bottom:calc(84px + env(safe-area-inset-bottom,0px))}
+  .readings{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .pct-row{grid-template-columns:minmax(0,1fr) auto}
+  .pct-row .bar{grid-column:1/-1}
+  .add-row{grid-template-columns:1fr}
+  .ex-form{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="top-inner">
+    <div class="brand">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="20" r="8" fill="var(--sun)"/><rect x="2" y="20" width="28" height="10" fill="var(--bg)"/><line x1="3" y1="20.5" x2="29" y2="20.5" stroke="var(--ink)" stroke-width="2" stroke-linecap="round"/><line x1="16" y1="4" x2="16" y2="8" stroke="var(--sun)" stroke-width="2" stroke-linecap="round"/><line x1="6" y1="9" x2="8.5" y2="11.5" stroke="var(--sun)" stroke-width="2" stroke-linecap="round"/><line x1="26" y1="9" x2="23.5" y2="11.5" stroke="var(--sun)" stroke-width="2" stroke-linecap="round"/></svg>
+      My Morning Protocol
+    </div>
+    <nav class="tabs" role="tablist">
+      <button role="tab" data-view="today" aria-selected="true">Today</button>
+      <button role="tab" data-view="insights" aria-selected="false">Insights</button>
+      <button role="tab" data-view="community" aria-selected="false">Community</button>
+      <button role="tab" data-view="devices" aria-selected="false">Devices</button>
+      <button role="tab" data-view="plans" aria-selected="false">Plans</button>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <!-- TODAY -->
+  <section class="view active" id="view-today">
+    <div class="banner" id="welcome" hidden>
+      <p class="small">This preview runs on 60 days of sample data so you can see how insights build up. Tick off today’s protocol and log a session to watch it change.</p>
+      <button class="btn ghost sm" id="dismissWelcome">Got it</button>
+    </div>
+    <div class="view-head">
+      <div>
+        <p class="muted" id="todayDate"></p>
+        <h1>Good morning</h1>
+      </div>
+    </div>
+
+    <div class="today-grid">
+      <div>
+        <div class="dawn">
+          <svg viewBox="0 0 400 230" role="img" aria-labelledby="dawnLabel">
+            <title id="dawnLabel">Protocol progress shown as a rising sun</title>
+            <defs>
+              <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stop-color="var(--sky-top)"/>
+                <stop offset="1" stop-color="var(--sky-low)"/>
+              </linearGradient>
+              <clipPath id="aboveHorizon"><rect x="0" y="0" width="400" height="150"/></clipPath>
+            </defs>
+            <rect width="400" height="230" fill="url(#sky)"/>
+            <g clip-path="url(#aboveHorizon)">
+              <g id="sun" style="transform:translateY(80px)">
+                <g id="rays" opacity="0" stroke="var(--sun)" stroke-width="3" stroke-linecap="round">
+                  <line x1="290" y1="28" x2="290" y2="14"/><line x1="290" y1="132" x2="290" y2="146"/>
+                  <line x1="238" y1="80" x2="224" y2="80"/><line x1="342" y1="80" x2="356" y2="80"/>
+                  <line x1="253" y1="43" x2="243" y2="33"/><line x1="327" y1="43" x2="337" y2="33"/>
+                  <line x1="253" y1="117" x2="243" y2="127"/><line x1="327" y1="117" x2="337" y2="127"/>
+                </g>
+                <circle cx="290" cy="80" r="40" fill="var(--sun)"/>
+              </g>
+            </g>
+            <rect x="0" y="150" width="400" height="80" fill="var(--ground)"/>
+          </svg>
+          <div class="dawn-text">
+            <div class="score" id="score">0%</div>
+            <p id="scoreText">0 of 0 done</p>
+          </div>
+        </div>
+        <div class="readings" id="readings"></div>
+        <p class="small muted" style="margin-top:8px" id="syncNote"></p>
+      </div>
+
+      <div>
+        <div class="panel">
+          <div class="panel-head"><h2>Today’s protocol</h2><span class="small muted" id="protoCount"></span></div>
+          <div id="checklist"></div>
+          <details class="edit">
+            <summary>Edit my protocol</summary>
+            <div id="editList"></div>
+            <div class="add-row">
+              <input id="newItem" placeholder="Add a step, like “Magnesium”" aria-label="New protocol step" style="background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:9px 11px">
+              <select id="newGroup" aria-label="Group" style="background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:9px 11px"></select>
+              <button class="btn sm" id="addItem">Add step</button>
+            </div>
+          </details>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head"><h2>Morning session</h2></div>
+          <div class="ex-form">
+            <label class="field">Type<select id="exType"></select></label>
+            <label class="field">Minutes<input id="exMin" type="number" min="0" max="300" value="40"></label>
+            <label class="field wide">Effort (RPE) <span><output id="rpeOut" class="rpe-out">6</output> of 10</span><input id="exRpe" type="range" min="1" max="10" value="6"></label>
+            <label class="field wide">Notes<textarea id="exNotes" rows="2" placeholder="How did it feel?"></textarea></label>
+          </div>
+          <button class="btn" id="saveEx" style="margin-top:14px">Save session</button>
+          <div id="savedEx"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- INSIGHTS -->
+  <section class="view" id="view-insights">
+    <div class="view-head">
+      <div><h1>What your mornings are doing</h1><p class="muted">Each morning’s readings are matched to what you did the morning before.</p></div>
+      <div class="seg" id="rangeSeg"><button data-range="30" aria-pressed="false">30 days</button><button data-range="60" aria-pressed="true">60 days</button></div>
+    </div>
+    <div class="insight-list" id="insightList"></div>
+    <div class="panel">
+      <div class="panel-head"><h2>HRV and protocol adherence</h2></div>
+      <div class="chart-box"><canvas id="cTrend" aria-label="HRV and adherence over time"></canvas></div>
+    </div>
+    <div class="chart-grid">
+      <div class="panel" style="margin-top:0">
+        <div class="panel-head"><h3>Next-morning recovery by session type</h3></div>
+        <div class="chart-box"><canvas id="cType" aria-label="Recovery by session type"></canvas></div>
+      </div>
+      <div class="panel" style="margin-top:0">
+        <div class="panel-head"><h3>Adherence vs next-morning HRV</h3><span class="small muted" id="rVal"></span></div>
+        <div class="chart-box"><canvas id="cScatter" aria-label="Adherence versus HRV"></canvas></div>
+      </div>
+    </div>
+    <div class="panel" style="margin-top:20px">
+      <div class="panel-head"><h3>Body composition</h3><span class="small muted">From your scale</span></div>
+      <div class="chart-box"><canvas id="cBody" aria-label="Weight and body fat"></canvas></div>
+    </div>
+  </section>
+
+  <!-- COMMUNITY -->
+  <section class="view" id="view-community">
+    <div class="view-head">
+      <div><h1>You and everyone else</h1><p class="muted">30-day averages compared with members your age. Nobody sees your name.</p></div>
+      <label class="field" style="min-width:160px">Age group<select id="cohort"></select></label>
+    </div>
+    <div class="panel" id="pctPanel"></div>
+    <div class="panel">
+      <div class="panel-head"><h2>What’s working across members</h2><span class="small muted">Change in HRV after 30 days of the habit</span></div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Habit</th><th class="num">Members</th><th class="num">Avg adherence</th><th class="num">HRV change</th></tr></thead>
+          <tbody id="habitTable"></tbody>
+        </table>
+      </div>
+    </div>
+    <p class="disclaimer">Community figures in this preview are simulated. Once members join, these numbers come from pooled, anonymised data and only show groups of 50 or more people.</p>
+  </section>
+
+  <!-- DEVICES -->
+  <section class="view" id="view-devices">
+    <div class="view-head">
+      <div><h1>Your devices</h1><p class="muted">Readings sync each morning and land on your Today page.</p></div>
+      <button class="btn ghost sm" id="resetDemo">Reset sample data</button>
+    </div>
+    <div class="device-grid" id="deviceGrid"></div>
+    <p class="disclaimer">In this preview, connecting a device switches sample readings on or off. Live connections are made through each company’s sign-in once the platform’s server is running.</p>
+  </section>
+
+  <!-- PLANS -->
+  <section class="view" id="view-plans">
+    <div class="view-head"><div><h1>Plans</h1><p class="muted">Track for free. Upgrade for deeper analysis and the community data.</p></div></div>
+    <div class="plans">
+      <div class="plan">
+        <h2>Free</h2><div class="price">£0</div>
+        <ul><li>Daily protocol checklist</li><li>Two connected devices</li><li>30 days of history</li></ul>
+        <button class="btn ghost" data-plan="Free">Start free</button>
+      </div>
+      <div class="plan featured">
+        <h2>Member</h2><div class="price">£9<span> / month</span></div>
+        <ul><li>Unlimited devices and history</li><li>Session-to-recovery analysis</li><li>Compare with your age group</li><li>Monthly protocol report</li></ul>
+        <button class="btn" data-plan="Member">Join the waitlist</button>
+      </div>
+      <div class="plan">
+        <h2>Pro</h2><div class="price">£19<span> / month</span></div>
+        <ul><li>Everything in Member</li><li>Protocol experiments with before and after results</li><li>Blood test uploads</li><li>Export for your doctor or coach</li></ul>
+        <button class="btn ghost" data-plan="Pro">Join the waitlist</button>
+      </div>
+    </div>
+    <div class="panel" style="margin-top:28px">
+      <div class="panel-head"><h2>Supplement stacks</h2><span class="small muted">Coming soon</span></div>
+      <div class="stacks">
+        <div class="stack"><h3>Morning foundation</h3><p class="small muted">Vitamin D3 + K2, omega-3 and creatine in one monthly box.</p></div>
+        <div class="stack"><h3>Training recovery</h3><p class="small muted">Electrolytes, magnesium glycinate and tart cherry.</p></div>
+        <div class="stack"><h3>Build your own</h3><p class="small muted">Pick from your protocol and get it delivered each month.</p></div>
+      </div>
+    </div>
+    <p class="disclaimer">My Morning Protocol is for general wellbeing tracking and isn’t medical advice. Speak to a doctor before starting supplements, especially if you take medication.</p>
+  </section>
+</main>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function(){
+const KEY='mmp-v1';
+const pad=n=>String(n).padStart(2,'0');
+const iso=d=>d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+const addDays=(d,n)=>{const x=new Date(d);x.setDate(x.getDate()+n);return x};
+const parse=s=>{const [y,m,d]=s.split('-').map(Number);return new Date(y,m-1,d)};
+const TODAY=iso(new Date());
+const $=s=>document.querySelector(s);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+const GROUPS=['Wake and light','Hydrate and fuel','Supplements','Movement'];
+const DEFAULT_PROTOCOL=[
+  {id:'wake',label:'Up by 6:30',group:'Wake and light'},
+  {id:'sun',label:'10 minutes of outdoor light',group:'Wake and light'},
+  {id:'nophone',label:'No phone for the first 30 minutes',group:'Wake and light'},
+  {id:'water',label:'500 ml water with electrolytes',group:'Hydrate and fuel'},
+  {id:'protein',label:'Protein-first breakfast',group:'Hydrate and fuel'},
+  {id:'coffee',label:'Coffee after 90 minutes',group:'Hydrate and fuel'},
+  {id:'creatine',label:'Creatine',group:'Supplements'},
+  {id:'omega',label:'Omega-3',group:'Supplements'},
+  {id:'d3',label:'Vitamin D3 + K2',group:'Supplements'},
+  {id:'move',label:'Morning exercise session',group:'Movement'},
+  {id:'cold',label:'Cold exposure',group:'Movement'}
+];
+const EX_TYPES=['Zone 2 cardio','Strength','HIIT','Yoga or mobility','Rest day'];
+const EX_EFFECT={'Zone 2 cardio':3.5,'Strength':-0.5,'HIIT':-4,'Yoga or mobility':2,'Rest day':1};
+const DEVICES=[
+  {id:'whoop',name:'WHOOP',data:'HRV, recovery, strain and sleep',via:'Connects with your WHOOP account'},
+  {id:'oura',name:'Oura Ring',data:'HRV, readiness, sleep and temperature',via:'Connects with your Oura account'},
+  {id:'hume',name:'Hume Body Pod',data:'Weight, body fat and muscle mass',via:'Syncs through Apple Health or Health Connect'},
+  {id:'withings',name:'Withings',data:'Weight, body composition and blood pressure',via:'Connects with your Withings account'},
+  {id:'garmin',name:'Garmin',data:'Workouts, HRV status and body battery',via:'Connects with Garmin Connect'},
+  {id:'apple',name:'Apple Health',data:'Anything your iPhone and Apple Watch record',via:'Needs the iPhone app'},
+  {id:'fitbit',name:'Fitbit',data:'Sleep, resting heart rate and activity',via:'Connects with your Google account'},
+  {id:'eight',name:'Eight Sleep',data:'Sleep stages and bed temperature',via:'Connects with your Eight Sleep account'}
+];
+
+function rng(seed){return function(){seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+const R=rng(42);
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+
+function makeMetrics(i,prevEx,prevAdh){
+  const hrv=Math.round(48+i*0.12+(prevAdh-0.7)*14+EX_EFFECT[prevEx]+(R()-0.5)*9);
+  return{
+    hrv,
+    recovery:clamp(Math.round(30+(hrv-38)*1.7+(R()-0.5)*10),12,99),
+    rhr:Math.round(60-(hrv-50)*0.22+(R()-0.5)*3),
+    sleep:clamp(Math.round(74+(prevAdh-0.7)*20+(R()-0.5)*14),55,98),
+    weight:+(83.1-i*0.028+(R()-0.5)*0.6).toFixed(1),
+    bodyfat:+(21.4-i*0.016+(R()-0.5)*0.4).toFixed(1)
+  };
+}
+function seedDemo(){
+  const logs={},metrics={};const start=addDays(new Date(),-59);
+  let prevEx='Rest day',prevAdh=0.7;
+  for(let i=0;i<60;i++){
+    const d=iso(addDays(start,i));
+    metrics[d]=Object.assign(makeMetrics(i,prevEx,prevAdh),{idx:i});
+    if(i===59)break;
+    const adh=0.45+R()*0.55;const done={};
+    DEFAULT_PROTOCOL.forEach(p=>{if(R()<adh)done[p.id]=true});
+    const pk=R();
+    const type=pk<.3?'Zone 2 cardio':pk<.55?'Strength':pk<.7?'HIIT':pk<.85?'Yoga or mobility':'Rest day';
+    const minutes=type==='Rest day'?0:type==='HIIT'?20+Math.round(R()*10):30+Math.round(R()*30);
+    if(type==='Rest day')delete done.move;else done.move=true;
+    logs[d]={done,exercise:{type,minutes,rpe:{'HIIT':8,'Strength':7,'Zone 2 cardio':5,'Yoga or mobility':3,'Rest day':1}[type],notes:''}};
+    prevEx=type;prevAdh=Object.keys(done).length/DEFAULT_PROTOCOL.length;
+  }
+  return{logs,metrics};
+}
+
+let S=null;
+function load(){
+  try{const raw=localStorage.getItem(KEY);if(raw)S=JSON.parse(raw)}catch(e){S=null}
+  if(!S||!S.metrics){S=Object.assign({protocol:DEFAULT_PROTOCOL.slice(),devices:{whoop:true,oura:true,hume:true},cohort:'35–44',welcomed:false},seedDemo())}
+  fillGaps();
+}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
+function fillGaps(){
+  const dates=Object.keys(S.metrics).sort();let last=dates[dates.length-1];
+  let idx=S.metrics[last].idx||dates.length-1;
+  while(last<TODAY){
+    const next=iso(addDays(parse(last),1));const log=S.logs[last];
+    const ex=log&&log.exercise?log.exercise.type:'Rest day';
+    S.metrics[next]=Object.assign(makeMetrics(++idx,ex,adherence(last)),{idx});
+    last=next;
+  }
+}
+function dayLog(d){if(!S.logs[d])S.logs[d]={done:{},exercise:null};return S.logs[d]}
+function adherence(d){const l=S.logs[d];if(!l||!S.protocol.length)return 0;return S.protocol.filter(p=>l.done[p.id]).length/S.protocol.length}
+
+/* ---------- Today ---------- */
+function setSun(p){
+  const y=80-p*62; // 80 = hidden, 18 = high
+  $('#sun').style.transform='translateY('+y+'px)';
+  $('#rays').setAttribute('opacity',p>=1?1:0);
+  $('#score').textContent=Math.round(p*100)+'%';
+}
+function renderToday(){
+  $('#todayDate').textContent=new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'});
+  $('#welcome').hidden=!!S.welcomed;
+  const log=dayLog(TODAY);
+  // checklist
+  let html='';
+  GROUPS.concat([...new Set(S.protocol.map(p=>p.group))].filter(g=>!GROUPS.includes(g))).forEach(g=>{
+    const items=S.protocol.filter(p=>p.group===g);if(!items.length)return;
+    html+='<div class="group-name">'+esc(g)+'</div>';
+    items.forEach(p=>{const on=!!log.done[p.id];
+      html+='<label class="check'+(on?' done':'')+'"><input type="checkbox" data-id="'+p.id+'"'+(on?' checked':'')+'><span>'+esc(p.label)+'</span></label>'});
+  });
+  $('#checklist').innerHTML=html;
+  $('#checklist').querySelectorAll('input').forEach(cb=>cb.addEventListener('change',e=>{
+    const id=e.target.dataset.id;if(e.target.checked)log.done[id]=true;else delete log.done[id];
+    e.target.closest('.check').classList.toggle('done',e.target.checked);save();updateScore();
+  }));
+  $('#editList').innerHTML=S.protocol.map(p=>'<div class="edit-row"><span>'+esc(p.label)+' <span class="muted small">'+esc(p.group)+'</span></span><button data-rm="'+p.id+'">Remove</button></div>').join('');
+  $('#editList').querySelectorAll('[data-rm]').forEach(b=>b.addEventListener('click',()=>{
+    S.protocol=S.protocol.filter(p=>p.id!==b.dataset.rm);save();renderToday();toast('Step removed');
+  }));
+  updateScore();renderReadings();renderSavedEx();
+}
+function updateScore(){
+  const log=dayLog(TODAY);const n=S.protocol.filter(p=>log.done[p.id]).length;
+  setSun(S.protocol.length?n/S.protocol.length:0);
+  $('#scoreText').textContent=n+' of '+S.protocol.length+' steps done';
+  $('#protoCount').textContent=n+' / '+S.protocol.length;
+}
+function avg(a){return a.length?a.reduce((s,v)=>s+v,0)/a.length:0}
+function lastN(key,n,excludeToday){
+  return Object.keys(S.metrics).sort().filter(d=>excludeToday?d<TODAY:true).slice(-n).map(d=>S.metrics[d][key]);
+}
+function renderReadings(){
+  const m=S.metrics[TODAY];const dv=S.devices;
+  const hrvSrc=dv.whoop?'WHOOP':dv.oura?'Oura':dv.garmin?'Garmin':null;
+  const bodySrc=dv.hume?'Hume':dv.withings?'Withings':null;
+  const sleepSrc=dv.oura?'Oura':dv.whoop?'WHOOP':dv.eight?'Eight Sleep':null;
+  const items=[
+    {k:'hrv',l:'HRV',u:'ms',src:hrvSrc,better:1},
+    {k:'recovery',l:'Recovery',u:'%',src:hrvSrc,better:1},
+    {k:'rhr',l:'Resting HR',u:'bpm',src:hrvSrc,better:-1},
+    {k:'sleep',l:'Sleep score',u:'',src:sleepSrc,better:1},
+    {k:'weight',l:'Weight',u:'kg',src:bodySrc,better:-1},
+    {k:'bodyfat',l:'Body fat',u:'%',src:bodySrc,better:-1}
+  ];
+  $('#readings').innerHTML=items.map(it=>{
+    if(!it.src||!m)return '<div class="reading"><div class="l">'+it.l+'</div><div class="v">—</div><div class="d">Connect a device</div></div>';
+    const a=avg(lastN(it.k,7,true));const diff=m[it.k]-a;
+    const good=diff*it.better>0;const dec=(it.k==='weight'||it.k==='bodyfat')?1:0;
+    const dtxt=Math.abs(diff)<(dec?0.05:0.5)?'Same as 7-day average':'<span class="'+(good?'up':'down')+'">'+(diff>0?'+':'−')+Math.abs(diff).toFixed(dec)+'</span> vs 7-day average';
+    return '<div class="reading"><div class="l">'+it.l+'</div><div class="v">'+m[it.k]+'<span>'+it.u+'</span></div><div class="d">'+dtxt+'</div></div>';
+  }).join('');
+  const srcs=[...new Set([hrvSrc,sleepSrc,bodySrc].filter(Boolean))];
+  $('#syncNote').textContent=srcs.length?'Synced this morning from '+srcs.join(', ')+'.':'No devices connected yet.';
+}
+function renderSavedEx(){
+  const ex=dayLog(TODAY).exercise;
+  $('#savedEx').innerHTML=ex?'<div class="saved-ex">Saved: '+esc(ex.type)+(ex.minutes?', '+ex.minutes+' minutes':'')+', effort '+ex.rpe+' of 10. Tomorrow’s readings will show how it landed.</div>':'';
+}
+
+/* ---------- Insights ---------- */
+let range=60;const charts={};
+function css(n){return getComputedStyle(document.documentElement).getPropertyValue(n).trim()}
+function pearson(x,y){const mx=avg(x),my=avg(y);let n=0,dx=0,dy=0;for(let i=0;i<x.length;i++){n+=(x[i]-mx)*(y[i]-my);dx+=(x[i]-mx)**2;dy+=(y[i]-my)**2}return dx&&dy?n/Math.sqrt(dx*dy):0}
+function pairs(){
+  const days=Object.keys(S.metrics).sort().slice(-range);const out=[];
+  days.forEach(d=>{const nx=iso(addDays(parse(d),1));const l=S.logs[d];
+    if(l&&S.metrics[nx]&&nx<=TODAY)out.push({d,adh:adherence(d),ex:l.exercise,next:S.metrics[nx]})});
+  return out;
+}
+function mk(id,cfg){if(charts[id])charts[id].destroy();charts[id]=new Chart(document.getElementById(id),cfg)}
+function renderInsights(){
+  if(typeof Chart==='undefined'){$('#insightList').innerHTML='<p class="muted">Charts couldn’t load. Check your connection and refresh.</p>';return}
+  const ink=css('--ink'),muted=css('--muted'),line=css('--line'),sun=css('--sun'),good=css('--good'),soft=css('--sun-soft');
+  Chart.defaults.font.family='Figtree, system-ui, sans-serif';Chart.defaults.color=muted;Chart.defaults.borderColor=line;
+  const days=Object.keys(S.metrics).sort().slice(-range);
+  const labels=days.map(d=>parse(d).toLocaleDateString('en-GB',{day:'numeric',month:'short'}));
+  mk('cTrend',{data:{labels,datasets:[
+    {type:'bar',label:'Protocol adherence',data:days.map(d=>Math.round(adherence(d)*100)),backgroundColor:soft,yAxisID:'y1',order:2},
+    {type:'line',label:'HRV (ms)',data:days.map(d=>S.metrics[d].hrv),borderColor:sun,backgroundColor:sun,pointRadius:0,tension:.35,borderWidth:2.5,yAxisID:'y',order:1}
+  ]},options:{maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{labels:{boxWidth:12}}},
+    scales:{y:{title:{display:true,text:'HRV (ms)'},grid:{color:line}},y1:{position:'right',min:0,max:100,grid:{display:false},title:{display:true,text:'Adherence %'}},x:{grid:{display:false},ticks:{maxTicksLimit:8}}}}});
+
+  const P=pairs();
+  const byType=EX_TYPES.map(t=>{const r=P.filter(p=>p.ex&&p.ex.type===t).map(p=>p.next.recovery);return{t,v:r.length?Math.round(avg(r)):null,n:r.length}}).filter(o=>o.n);
+  mk('cType',{type:'bar',data:{labels:byType.map(o=>o.t),datasets:[{label:'Avg recovery %',data:byType.map(o=>o.v),backgroundColor:byType.map((o,i)=>o.v===Math.max(...byType.map(b=>b.v))?sun:soft),borderRadius:6}]},
+    options:{maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{afterLabel:c=>byType[c.dataIndex].n+' mornings'}}},scales:{y:{min:0,max:100,grid:{color:line}},x:{grid:{display:false}}}}});
+
+  const xs=P.map(p=>Math.round(p.adh*100)),ys=P.map(p=>p.next.hrv);const r=pearson(xs,ys);
+  $('#rVal').textContent='Correlation r = '+r.toFixed(2);
+  mk('cScatter',{type:'scatter',data:{datasets:[{label:'Mornings',data:P.map((p,i)=>({x:xs[i],y:ys[i]})),backgroundColor:sun,pointRadius:4}]},
+    options:{maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{min:0,max:100,title:{display:true,text:'Adherence %'},grid:{color:line}},y:{title:{display:true,text:'Next-morning HRV (ms)'},grid:{color:line}}}}});
+
+  mk('cBody',{type:'line',data:{labels,datasets:[
+    {label:'Weight (kg)',data:days.map(d=>S.metrics[d].weight),borderColor:ink,backgroundColor:ink,pointRadius:0,tension:.3,borderWidth:2,yAxisID:'y'},
+    {label:'Body fat (%)',data:days.map(d=>S.metrics[d].bodyfat),borderColor:good,backgroundColor:good,pointRadius:0,tension:.3,borderWidth:2,yAxisID:'y1'}
+  ]},options:{maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{labels:{boxWidth:12}}},scales:{y:{grid:{color:line},title:{display:true,text:'kg'}},y1:{position:'right',grid:{display:false},title:{display:true,text:'%'}},x:{grid:{display:false},ticks:{maxTicksLimit:8}}}}});
+
+  // insight sentences
+  const sorted=byType.slice().sort((a,b)=>b.v-a.v);const best=sorted[0],worst=sorted[sorted.length-1];
+  const hi=P.filter(p=>p.adh>=0.8).map(p=>p.next.hrv),lo=P.filter(p=>p.adh<0.8).map(p=>p.next.hrv);
+  const w0=S.metrics[days[0]].weight,w1=S.metrics[days[days.length-1]].weight;
+  const ins=[];
+  if(best&&worst&&best!==worst)ins.push(['After '+best.t.toLowerCase()+', recovery averages '+best.v+'%','That’s '+(best.v-worst.v)+' points higher than mornings after '+worst.t.toLowerCase()+'.']);
+  if(hi.length&&lo.length)ins.push(['Hitting 80% of your protocol is worth '+(avg(hi)-avg(lo)).toFixed(1)+' ms of HRV','Next-morning HRV averages '+avg(hi).toFixed(0)+' ms on those days, against '+avg(lo).toFixed(0)+' ms on the rest.']);
+  ins.push([(w1<=w0?'Down ':'Up ')+Math.abs(w1-w0).toFixed(1)+' kg in '+range+' days','Body fat has moved from '+S.metrics[days[0]].bodyfat+'% to '+S.metrics[days[days.length-1]].bodyfat+'%.']);
+  $('#insightList').innerHTML=ins.map(i=>'<div class="insight"><strong>'+i[0]+'</strong><p class="small muted">'+i[1]+'</p></div>').join('');
+}
+
+/* ---------- Community ---------- */
+const COHORTS={'25–34':{hrv:[62,18],recovery:[60,15],rhr:[59,7],adh:[62,18]},'35–44':{hrv:[52,16],recovery:[58,15],rhr:[61,7],adh:[65,18]},'45–54':{hrv:[43,14],recovery:[56,15],rhr:[63,7],adh:[68,17]},'55+':{hrv:[35,12],recovery:[54,15],rhr:[64,8],adh:[70,16]}};
+const COHORT_SIZE={'25–34':3120,'35–44':4480,'45–54':2950,'55+':1610};
+function ncdf(z){const t=1/(1+0.2316419*Math.abs(z));const d=0.3989423*Math.exp(-z*z/2);const p=d*t*(0.3193815+t*(-0.3565638+t*(1.781478+t*(-1.821256+t*1.330274))));return z>0?1-p:p}
+function renderCommunity(){
+  const sel=$('#cohort');if(!sel.options.length){sel.innerHTML=Object.keys(COHORTS).map(c=>'<option>'+c+'</option>').join('');sel.addEventListener('change',()=>{S.cohort=sel.value;save();renderCommunity()})}
+  sel.value=S.cohort;const C=COHORTS[S.cohort];
+  const days=Object.keys(S.metrics).sort().filter(d=>d<TODAY).slice(-30);
+  const you={hrv:avg(days.map(d=>S.metrics[d].hrv)),recovery:avg(days.map(d=>S.metrics[d].recovery)),rhr:avg(days.map(d=>S.metrics[d].rhr)),adh:avg(days.map(d=>adherence(d)*100))};
+  const rows=[['hrv','HRV','ms',1],['recovery','Recovery','%',1],['rhr','Resting heart rate','bpm',-1],['adh','Protocol adherence','%',1]];
+  $('#pctPanel').innerHTML='<div class="panel-head"><h2>Compared with '+COHORT_SIZE[S.cohort].toLocaleString('en-GB')+' members aged '+S.cohort+'</h2></div>'+rows.map(([k,l,u,b])=>{
+    const [m,sd]=C[k];let pct=ncdf((you[k]-m)/sd);if(b<0)pct=1-pct;pct=clamp(Math.round(pct*100),1,99);
+    return '<div class="pct-row"><div>'+l+'</div><div class="you">'+you[k].toFixed(0)+'<span class="small muted"> '+u+'</span></div><div class="bar"><div class="track"><div class="marker" style="left:'+pct+'%"></div></div><div class="pct-label">Better than '+pct+'% of members your age</div></div></div>';
+  }).join('');
+  const habits=[['Zone 2 cardio three or more mornings a week',1840,71,'+6.8'],['10 minutes of morning light',3210,78,'+4.1'],['Protein-first breakfast',2660,74,'+2.9'],['Coffee after 90 minutes',1975,63,'+2.2'],['Cold exposure',1120,58,'+1.6'],['Creatine daily',2430,82,'+0.9']];
+  $('#habitTable').innerHTML=habits.map(h=>'<tr><td>'+h[0]+'</td><td class="num">'+h[1].toLocaleString('en-GB')+'</td><td class="num">'+h[2]+'%</td><td class="num up">'+h[3]+' ms</td></tr>').join('');
+}
+
+/* ---------- Devices ---------- */
+function renderDevices(){
+  $('#deviceGrid').innerHTML=DEVICES.map(d=>{const on=!!S.devices[d.id];
+    return '<div class="device'+(on?' on':'')+'"><h3>'+d.name+'</h3>'+(on?'<div class="status">Connected</div>':'')+'<p class="small">'+d.data+'</p><p class="via">'+d.via+'</p><button class="btn sm'+(on?' ghost':'')+'" data-dev="'+d.id+'">'+(on?'Disconnect':'Connect')+'</button></div>'}).join('');
+  $('#deviceGrid').querySelectorAll('[data-dev]').forEach(b=>b.addEventListener('click',()=>{
+    const id=b.dataset.dev;S.devices[id]=!S.devices[id];save();renderDevices();renderReadings();
+    toast((DEVICES.find(d=>d.id===id).name)+(S.devices[id]?' connected':' disconnected'));
+  }));
+}
+
+/* ---------- Shell ---------- */
+let toastT;
+function toast(msg){const t=$('#toast');t.textContent=msg;t.classList.add('show');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('show'),2200)}
+function show(view){
+  document.querySelectorAll('nav.tabs button').forEach(b=>b.setAttribute('aria-selected',b.dataset.view===view?'true':'false'));
+  document.querySelectorAll('.view').forEach(v=>v.classList.toggle('active',v.id==='view-'+view));
+  if(view==='insights')renderInsights();
+  if(view==='community')renderCommunity();
+  if(view==='devices')renderDevices();
+  window.scrollTo(0,0);
+}
+document.querySelectorAll('nav.tabs button').forEach(b=>b.addEventListener('click',()=>show(b.dataset.view)));
+document.querySelectorAll('#rangeSeg button').forEach(b=>b.addEventListener('click',()=>{
+  range=+b.dataset.range;document.querySelectorAll('#rangeSeg button').forEach(x=>x.setAttribute('aria-pressed',x===b?'true':'false'));renderInsights();
+}));
+$('#dismissWelcome').addEventListener('click',()=>{S.welcomed=true;save();$('#welcome').hidden=true});
+$('#exType').innerHTML=EX_TYPES.map(t=>'<option>'+t+'</option>').join('');
+$('#newGroup').innerHTML=GROUPS.map(g=>'<option>'+g+'</option>').join('');
+$('#exRpe').addEventListener('input',e=>$('#rpeOut').textContent=e.target.value);
+$('#saveEx').addEventListener('click',()=>{
+  const type=$('#exType').value;const log=dayLog(TODAY);
+  log.exercise={type,minutes:type==='Rest day'?0:clamp(+$('#exMin').value||0,0,300),rpe:+$('#exRpe').value,notes:$('#exNotes').value.trim()};
+  if(type!=='Rest day'&&S.protocol.some(p=>p.id==='move'))log.done.move=true;
+  save();renderToday();toast('Session saved');
+});
+$('#addItem').addEventListener('click',()=>{
+  const label=$('#newItem').value.trim();if(!label){$('#newItem').focus();return}
+  S.protocol.push({id:'c'+Date.now(),label,group:$('#newGroup').value});$('#newItem').value='';save();renderToday();toast('Step added');
+});
+$('#resetDemo').addEventListener('click',()=>{try{localStorage.removeItem(KEY)}catch(e){}S=null;load();save();renderToday();renderDevices();toast('Sample data reset')});
+document.querySelectorAll('[data-plan]').forEach(b=>b.addEventListener('click',()=>toast(b.dataset.plan==='Free'?'You’re on the free plan':'Added to the '+b.dataset.plan+' waitlist')));
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{if($('#view-insights').classList.contains('active'))renderInsights()});
+
+load();save();renderToday();
+})();
+</script>
+</body>
+</html>
